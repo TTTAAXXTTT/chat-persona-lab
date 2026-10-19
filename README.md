@@ -38,7 +38,7 @@ python -m persona_agent --analyze-only
 python -m persona_agent --offline-fake-model
 ```
 
-打开 http://127.0.0.1:8765，选择虚构联系人，输入“早上好”，尝试修改、确认和拒绝草稿。默认确认结果为 `approved_not_sent`，不会发送到微信。退出服务按 `Ctrl+C`。
+打开 [本地工作台](http://127.0.0.1:8765)，选择虚构联系人，输入“早上好”，尝试修改、确认和拒绝草稿。默认确认结果为 `approved_not_sent`，不会发送到微信。退出服务按 `Ctrl+C`。
 
 Windows 可在生成演示资料后双击 `run-offline.cmd`。生成器不会覆盖已有 `.env` 或档案。全部示例均为专门编写的虚构内容。
 
