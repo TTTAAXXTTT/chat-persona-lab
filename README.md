@@ -1,5 +1,13 @@
 # 聊语实验室 · Chat Persona Lab
 
+<!-- portable-download:start -->
+## 直接下载使用
+
+**[下载 Windows x64 便携版 v0.1.0](https://github.com/TTTAAXXTTT/chat-persona-lab/releases/download/v0.1.0/chat-persona-lab-Windows-x64-v0.1.0.zip)** · [发布说明与 SHA-256 校验](https://github.com/TTTAAXXTTT/chat-persona-lab/releases/tag/v0.1.0)
+
+完整解压后使用包内启动 CMD，无需安装 Python 或 Node。包内包含运行环境、应用依赖、源码和使用说明。账号、模型 API 及设备仍需自行配置。
+<!-- portable-download:end -->
+
 **从聊天记录了解自己的表达习惯，用自己的风格写出可以亲自审阅的回复草稿。**
 
 以本地处理为起点的 Python 项目：导入聊天文本与结构化人格档案，建立按联系人隔离的历史索引，统计本人表达风格，再根据当前对话生成候选回复。可先完全离线体验，再自行配置云端模型。
