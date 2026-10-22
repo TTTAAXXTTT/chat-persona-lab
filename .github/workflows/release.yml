@@ -77,6 +77,10 @@ jobs:
                   target.parent.mkdir(parents=True, exist_ok=True)
                   shutil.copy2(BASE / relative, target)
 
+          # Windows PowerShell 5.1 needs a BOM for scripts containing Chinese text.
+          for script in dest.rglob('*.ps1'):
+              script.write_text(script.read_text(encoding='utf-8-sig'), encoding='utf-8-sig')
+
           runtime = dest / 'runtime' / 'python'
           packages = dest / 'runtime' / 'packages'
           runtime.mkdir(parents=True)
@@ -85,8 +89,8 @@ jobs:
           download('https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip', python_zip)
           with zipfile.ZipFile(python_zip) as z:
               z.extractall(runtime)
-          (runtime / 'python312._pth').write_text('python312.zip\n.\n../packages\n../..\nimport site\n', encoding='ascii')
-          provenance = {'repository': REPO, 'version': VERSION, 'commit': os.environ['GITHUB_SHA'],
+          (runtime / 'python312._pth').write_text('python312.zip\n.\n..\\packages\n..\\..\nimport site\n', encoding='ascii')
+          provenance = {'repository': REPO, 'version': VERSION, 'commit': subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
                         'python': '3.12.10', 'python_zip_sha256': hashlib.sha256(python_zip.read_bytes()).hexdigest()}
           if (source / 'requirements.txt').is_file():
               run(sys.executable, '-m', 'pip', 'install', '--disable-pip-version-check', '--no-compile', '--target', packages, '-r', source / 'requirements.txt', cwd=source)
@@ -133,6 +137,9 @@ jobs:
               instructions = '完整解压，双击“启动交易台.cmd”。无需安装 Python/Node。首次启动请在本机配置 API。默认不自动开仓；真实策略仍须人工启用。停止服务请用“停止本目录服务.cmd”。本包保留原有进程监督及恢复行为，使用前阅读 README 和风险说明。'
           elif REPO == 'dingtalk-report-panel':
               run('powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', dest / 'setup_dws.ps1', cwd=dest)
+              licenses = dest / 'runtime/licenses'
+              licenses.mkdir(parents=True)
+              download('https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/v1.0.59/LICENSE', licenses / 'DWS-LICENSE')
               cmd('01_首次使用.cmd', 'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0login_dingtalk.ps1"\nif errorlevel 1 (pause & exit /b 1)\npowershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0start.ps1"\npause')
               cmd('02_日常启动.cmd', 'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0start.ps1"\npause')
               cmd('03_重新登录钉钉.cmd', 'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0login_dingtalk.ps1"\npause')
@@ -189,7 +196,31 @@ jobs:
         run: |
           set -euo pipefail
           if ! gh release view v0.1.0 >/dev/null 2>&1; then
-            gh release create v0.1.0 --target "$GITHUB_SHA" --draft --title "聊语实验室 v0.1.0 · Windows 便携版" --notes '下载 chat-persona-lab-Windows-x64-v0.1.0.zip 并完整解压。已包含 Windows x64 Python 运行环境及应用依赖，不需要安装 Python/Node。使用根目录启动 CMD，详见包内“使用说明-先读.txt”。经过源码回归与包内运行时启动核验；账号、模型及设备依赖仍由使用者配置。'
+            gh release create v0.1.0 --target "$(git rev-parse HEAD)" --draft --title "聊语实验室 v0.1.0 · Windows 便携版" --notes '下载 chat-persona-lab-Windows-x64-v0.1.0.zip 并完整解压。已包含 Windows x64 Python 运行环境及应用依赖，不需要安装 Python/Node。使用根目录启动 CMD，详见包内“使用说明-先读.txt”。经过源码回归与包内运行时启动核验；账号、模型及设备依赖仍由使用者配置。'
           fi
           gh release upload v0.1.0 release/chat-persona-lab-Windows-x64-v0.1.0.zip release/SHA256SUMS.txt --clobber
           gh release edit v0.1.0 --draft=false --latest
+      - name: Add the tested download to the project home page
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os,re
+          from pathlib import Path
+          repo=os.environ['RELEASE_REPO']; version=os.environ['RELEASE_VERSION']
+          asset=repo+'-Windows-x64-'+version+'.zip'
+          url='https://github.com/TTTAAXXTTT/'+repo+'/releases/download/'+version+'/'+asset
+          p=Path('README.md'); body=p.read_text(encoding='utf-8')
+          body=re.sub(r'<!-- portable-download:start -->.*?<!-- portable-download:end -->\s*','',body,flags=re.S)
+          block='\n<!-- portable-download:start -->\n## 直接下载使用\n\n**[下载 Windows x64 便携版 '+version+']('+url+')** · [发布说明与 SHA-256 校验](https://github.com/TTTAAXXTTT/'+repo+'/releases/tag/'+version+')\n\n完整解压后使用包内启动 CMD，无需安装 Python 或 Node。包内包含运行环境、应用依赖、源码和使用说明。账号、模型 API 及设备仍需自行配置。\n'
+          if repo=='video-editing-workflow': block+='本包也已包含从对应源码编译的 FFmpeg、FFprobe 和 x264，详见包内许可。\n'
+          block+='<!-- portable-download:end -->\n'
+          first,sep,rest=body.partition('\n'); p.write_text(first+sep+block+rest,encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Add verified Windows portable download and startup instructions'
+            git push origin HEAD:main
+          fi
